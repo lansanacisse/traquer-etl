@@ -1,34 +1,19 @@
 from fhir.resources.identifier import Identifier
 from fhir.resources.location import Location
-from fhir.resources.reference import Reference
 
-from fhir_mapping.utils import clean_id
+from fhir_mapping.utils import clean_id, safe_str
 
 
-def map_department_location(row: dict) -> Location:
-    dept = clean_id(row["departement"])
+def map_patient_location(row: dict) -> Location:
+    code = clean_id(row["code_unite_patient"])
 
     return Location(
-        id=f"location-departement-{dept}",
+        id=f"location-{code}",
         identifier=[
-            Identifier(system="urn:departement", value=str(row["departement"]))
-        ],
-        name=row.get("departement"),
-    )
-
-
-def map_uf_location(row: dict) -> Location:
-    uf = clean_id(row["code_uf"])
-
-    return Location(
-        id=f"location-uf-{uf}",
-        identifier=[Identifier(system="urn:uf", value=str(row["code_uf"]))],
-        name=row.get("nom_uf"),
-        partOf=(
-            Reference(
-                reference=f"Location/location-departement-{clean_id(row['departement'])}"
+            Identifier(
+                system="urn:unit-code",
+                value=str(row["code_unite_patient"]),
             )
-            if row.get("departement")
-            else None
-        ),
+        ],
+        name=safe_str(row.get("nom_unite_patient")),
     )

@@ -4,15 +4,16 @@ from fhir.resources.period import Period
 from fhir.resources.reference import Reference
 from fhir.resources.task import Task
 
-from fhir_mapping.utils import clean_id
+from fhir_mapping.utils import clean_id, get_demande_id, safe_datetime
 
 
 def map_task(row: dict) -> Task:
-    source_id = clean_id(row["id_source"])
+    demande_id = get_demande_id(row)
+    ipp = clean_id(row["ipp"])
 
     return Task(
-        id=f"task-{source_id}",
-        status=calculer_statut_task(row),
+        id=f"task-{demande_id}",
+        status=row.get("statut_task") or "requested",
         intent="order",
         code=CodeableConcept(
             coding=[
@@ -23,9 +24,11 @@ def map_task(row: dict) -> Task:
                 )
             ]
         ),
-        description=row.get("description"),
-        focus=Reference(reference=f"ServiceRequest/servicerequest-{source_id}"),
-        for_fhir=Reference(reference=f"Patient/patient-{clean_id(row['ipp'])}"),
+        description=row.get("description_demande"),
+        focus=Reference(
+            reference=f"ServiceRequest/servicerequest-{demande_id}",
+        ),
+        for_fhir=Reference(reference=f"Patient/patient-{ipp}"),
         encounter=(
             Reference(reference=f"Encounter/encounter-{clean_id(row['iep'])}")
             if row.get("iep")
@@ -33,26 +36,10 @@ def map_task(row: dict) -> Task:
         ),
         executionPeriod=(
             Period(
-                start=row.get("date_reception"),
-                end=row.get("date_validation"),
+                start=safe_datetime(row.get("date_reception")),
+                end=safe_datetime(row.get("date_validation")),
             )
             if row.get("date_reception") or row.get("date_validation")
             else None
         ),
     )
-
-
-def calculer_statut_task(row: dict) -> str:
-    if (
-        row.get("date_validation_isolation")
-        or row.get("date_validation")
-        or row.get("id_isolation")
-    ):
-        return "completed"
-    if (
-        row.get("id_prelevement")
-        or row.get("date_reception_prelevement")
-        or row.get("date_reception")
-    ):
-        return "in-progress"
-    return "requested"
