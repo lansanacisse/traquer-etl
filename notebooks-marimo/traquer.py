@@ -31,6 +31,7 @@ def _(mo):
 def _():
     # import library
     import polars as pl
+    import pandas as pd
     from zoneinfo import ZoneInfo
     from datetime import datetime, timedelta
     from extract.oracle_extract import extract_oraglims_data

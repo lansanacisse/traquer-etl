@@ -1,0 +1,1 @@
+*/10 * * * * cd /mnt/san/cdc/0173639A/glims-etl && .venv/bin/python run_pipeline.py >> logs/cron.log 2>&1
