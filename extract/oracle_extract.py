@@ -1,5 +1,4 @@
 import polars as pl
-
 from database import get_oracle_connection
 from sql_queries import EXTRACT_QUERY
 
@@ -24,8 +23,3 @@ def extract_oraglims_data() -> pl.DataFrame:
         print("Echec de l'extraction")
         print(f"{e}")
         raise
-
-
-# if __name__ == "__main__":
-#     extract_oraglims_data()
-#     print("Test d'extraction terminée")
