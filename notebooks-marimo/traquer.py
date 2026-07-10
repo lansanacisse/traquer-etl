@@ -7,7 +7,7 @@ app = marimo.App(width="medium")
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## **Normalisation et transformation de données traquer**
+    ## **Fusion  de données traquer**
     """)
     return
 
@@ -19,35 +19,21 @@ def _():
     return (mo,)
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## **Normalisation et transformation de données traquer**
-    """)
-    return
-
-
 @app.cell
 def _():
     # import library
     import polars as pl
     from zoneinfo import ZoneInfo
     from datetime import datetime, timedelta
+    from pathlib import Path
     import sys
     import logging
-
-    return (sys,)
-
-
-@app.cell
-def _(sys):
-    from pathlib import Path
-
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from transform.glims_biologie import biologie_glims_csv
     from transform.gam_mouvements import mouvements_gam_csv
+    from transform.fusion_gam_glims import fusion_gam_glims
 
-    return biologie_glims_csv, mouvements_gam_csv
+    return biologie_glims_csv, fusion_gam_glims, mouvements_gam_csv
 
 
 @app.cell
@@ -72,11 +58,9 @@ def _(GLIMS_pat, biologie_glims_csv):
 
 
 @app.cell
-def _(df_gam_clean, df_glims_clean):
-    from transform.fusion_gam_glims import fusionner
-
-    df_traquer = fusionner(df_gam_clean, df_glims_clean)
-    df_traquer
+def _(df_gam_clean, df_glims_clean, fusion_gam_glims):
+    df_fusion = fusion_gam_glims(df_gam_clean, df_glims_clean)
+    df_fusion
     return
 
 

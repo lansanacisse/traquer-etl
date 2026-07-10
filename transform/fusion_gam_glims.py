@@ -1,40 +1,32 @@
 import polars as pl
 
 
-def normalize_ipp(col: str, length: int = 9):
+def _cle_iep(colonne: str):
+    """Normalise une colonne IEP en texte pour une jointure fiable.
+
+    IEP GAM (i64) et ENCT_EXTERNALID GLIMS (souvent texte) sont ramenes
+    au meme type. On passe par le texte, en retirant les espaces et un
+    eventuel '.0' de flottant, pour eviter les non-correspondances.
     """
-    Normalise un identifiant patient :
-    - cast string
-    - trim
-    - conserve les zéros à gauche
-    """
-    return pl.col(col).cast(pl.Utf8).fill_null("").str.strip_chars().str.zfill(length)
-
-
-def fusionner(df_mouvements: pl.DataFrame, df_bio: pl.DataFrame) -> pl.DataFrame:
-    """Jointure par intervalle (patient + date prélèvement dans mouvement)."""
-
-    mvt = df_mouvements.with_columns(normalize_ipp("IPP").alias("IPP")).with_columns(
-        pl.int_range(pl.len()).alias("_MVT_ID")
+    return (
+        pl.col(colonne)
+        .cast(pl.Utf8)
+        .fill_null("")
+        .str.strip_chars()
+        .str.replace(r"\.0$", "")
+        .alias("_IEP_KEY")
     )
 
-    bio = df_bio.with_columns(normalize_ipp("IDNT_CODE").alias("IPP_BIO"))
 
-    apparies = mvt.join_where(
-        bio,
-        pl.col("IPP") == pl.col("IPP_BIO"),
-        pl.col("SPMN_SAMPLINGTIME") >= pl.col("DATE_DEBUT_MOUVEMENT"),
-        pl.col("SPMN_SAMPLINGTIME") <= pl.col("DATE_FIN_MOUVEMENT"),
-    )
+def fusion_gam_glims(df_mouvements: pl.DataFrame, df_bio: pl.DataFrame) -> pl.DataFrame:
+    """Jointure GAM x GLIMS par sejour (IEP). Une ligne par analyse."""
 
-    sans_analyse = mvt.join(
-        apparies.select("_MVT_ID").unique(), on="_MVT_ID", how="anti"
-    )
+    mvt = df_mouvements.with_columns(_cle_iep("IEP"))
+    bio = df_bio.with_columns(_cle_iep("IEP"))
+    resultat = mvt.join(bio, on="_IEP_KEY", how="left")
 
-    resultat = pl.concat([apparies, sans_analyse], how="diagonal")
-
-    tri_cols = [c for c in ("IPP", "DATE_DEBUT_MOUVEMENT") if c in resultat.columns]
-
-    return resultat.drop(["_MVT_ID", "IPP_BIO"], strict=False).sort(
-        tri_cols, nulls_last=True
-    )
+    tri = [c for c in ("IPP", "IEP") if c in resultat.columns]
+    resultat = resultat.drop("_IEP_KEY", strict=False)
+    if tri:
+        resultat = resultat.sort(tri, descending=[False] * len(tri), nulls_last=True)
+    return resultat

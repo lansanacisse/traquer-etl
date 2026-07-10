@@ -33,7 +33,12 @@ def typer_colonnes(df_raw):
         pl.col(col)
         .map_elements(julian_to_datetime, return_dtype=pl.Datetime)
         .alias(col)
-        for col in ("SPMN_SAMPLINGTIME", "SPMN_RECEIPTTIME", "DATE_VALIDATION_PCR")
+        for col in (
+            "SPMN_SAMPLINGTIME",
+            "SPMN_RECEIPTTIME",
+            "DATE_VALIDATION_PCR",
+            "PRSN_DECEASETIME",
+        )
         if col in df.columns
     ]
     if conversions:
