@@ -9,3 +9,4 @@ state/
 .sh
 sql_queries-prod.py
 sql_queries.py
+queries/
