@@ -1,31 +1,56 @@
 import oracledb
-from config import ORACLE_CONFIG
+
+from config import GLIMS_CONFIG, GAM_CONFIG
 
 
-def get_oracle_connection():
+def get_oracle_connection(config, database_name):
+    """
+    Création d'une connexion Oracle.
+
+    database_name :
+        Nom lisible de la base pour les logs (GLIMS ou GAM)
+    """
+
     try:
-        print("Tentative de connexion à Oracle...")
+        print(f"[{database_name}] Tentative de connexion Oracle...")
+
         dsn = oracledb.makedsn(
-            ORACLE_CONFIG["host"],
-            ORACLE_CONFIG["port"],
-            service_name=ORACLE_CONFIG["service_name"],
+            config["host"],
+            config["port"],
+            service_name=config["service_name"],
         )
 
         conn = oracledb.connect(
-            user=ORACLE_CONFIG["username"],
-            password=ORACLE_CONFIG["password"],
+            user=config["username"],
+            password=config["password"],
             dsn=dsn,
         )
 
-        print("Connexion Oracle réussie")
+        print(f"[{database_name}] Connexion Oracle réussie")
+
         return conn
 
     except Exception as e:
-        print("Echec de connexion à Oracle")
-        print(f"{e}")
+        print(f"[{database_name}] Echec de connexion Oracle")
+        print(f"[{database_name}] Erreur : {e}")
         raise
 
 
-# if __name__ == "__main__":
-#     with get_oracle_connection() as conn:
-#         print("Test de connexion terminé")
+def get_glims_connection():
+    """
+    Connexion à la base GLIMS.
+    """
+    return get_oracle_connection(
+        GLIMS_CONFIG,
+        "GLIMS",
+    )
+
+
+def get_gam_connection():
+    """
+    Connexion à la base GAM.
+    """
+    return get_oracle_connection(
+        GAM_CONFIG,
+        "GAM",
+    )

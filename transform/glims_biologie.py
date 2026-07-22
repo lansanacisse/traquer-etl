@@ -1,7 +1,41 @@
+# Copyright (c) 2026
+# Tous droits réservés CHU Brest.
+
 import polars as pl
 
 from utils.dates import julian_to_datetime
 from utils.text import norm
+
+COLONNES_DATES_GLIMS = (
+    "SPMN_SAMPLINGTIME",
+    "SPMN_RECEIPTTIME",
+    "DATE_VALIDATION_PCR",
+    "PRSN_DECEASETIME",
+    "PRSN_BIRTHDATE",
+)
+
+
+def _convertir_date(df, nom):
+    """
+    Renvoie l'expression convertissant une colonne de date en Datetime.
+
+    Une meme colonne arrive sous trois formes selon la source :
+      - Datetime  : lecture directe Oracle, rien a convertir ;
+      - texte     : export CSV ("1974-01-31 00:00:00.000") ;
+      - numerique : date julienne GLIMS (export BusinessObjects).
+
+    Renvoie None si la colonne est deja au bon type.
+    """
+    dtype = df.schema[nom]
+    if dtype == pl.Utf8:
+        return pl.col(nom).str.to_datetime(strict=False).alias(nom)
+    if dtype.is_numeric():
+        return (
+            pl.col(nom)
+            .map_elements(julian_to_datetime, return_dtype=pl.Datetime)
+            .alias(nom)
+        )
+    return None
 
 
 def typer_colonnes(df_raw):
@@ -28,37 +62,35 @@ def typer_colonnes(df_raw):
     types_presents = {c: t for c, t in schema_types.items() if c in df_raw.columns}
     df = df_raw.with_columns([pl.col(c).cast(t) for c, t in types_presents.items()])
 
-    # Dates juliennes
-    conversions = [
-        pl.col(col)
-        .map_elements(julian_to_datetime, return_dtype=pl.Datetime)
-        .alias(col)
-        for col in (
-            "SPMN_SAMPLINGTIME",
-            "SPMN_RECEIPTTIME",
-            "DATE_VALIDATION_PCR",
-            "PRSN_DECEASETIME",
-        )
-        if col in df.columns
-    ]
+    conversions = []
+    for nom in COLONNES_DATES_GLIMS:
+        if nom in df.columns:
+            expr = _convertir_date(df, nom)
+            if expr is not None:
+                conversions.append(expr)
     if conversions:
         df = df.with_columns(conversions)
-
-    if "PRSN_BIRTHDATE" in df.columns:
-        df = df.with_columns(pl.col("PRSN_BIRTHDATE").str.to_datetime(strict=False))
 
     return df
 
 
 def expr_sexe():
-    """Transforme PRSN_SEX numerique en libelle"""
+    """
+    Transforme PRSN_SEX numerique en code FHIR (Patient.gender) :
+      1 -> male, 2 -> female, valeur absente -> unknown, autre -> other.
+
+    Unique point de traduction du sexe : la suite du pipeline reprend
+    cette valeur telle quelle, sans la retraduire.
+    """
     sexe = pl.col("PRSN_SEX").cast(pl.Utf8).fill_null("").str.strip_chars()
     return (
         pl.when(sexe == "1")
-        .then(pl.lit("M"))
+        .then(pl.lit("male"))
         .when(sexe == "2")
-        .then(pl.lit("F"))
-        .otherwise(pl.lit("Autres"))
+        .then(pl.lit("female"))
+        .when(sexe == "")
+        .then(pl.lit("unknown"))
+        .otherwise(pl.lit("other"))
         .alias("PRSN_SEX")
     )
 
@@ -133,6 +165,7 @@ def expr_pcr_positif(df):
     presents = [g for g in genes if g in df.columns]
 
     def gene_positif(col):
+        """Vrai si la valeur du gene indique un resultat positif."""
         return (
             pl.col(col)
             .cast(pl.Utf8)
@@ -273,12 +306,22 @@ def biologie_glims(df, detail=False):
     return df_bhre
 
 
+COLONNES_TEXTE_GLIMS = {
+    "IDNT_CODE": pl.Utf8,
+    "PRSN_INTERNALID": pl.Utf8,
+    "ORD_INTERNALID": pl.Utf8,
+    "SPMN_INTERNALID": pl.Utf8,
+    "IEP": pl.Utf8,
+    "ABRS_RISREPORTVALUE": pl.Utf8,
+}
+
+
 def biologie_glims_csv(chemin, detail=False):
-    """
-    Commodite test / notebook : lit un CSV GLIMS puis classe et consolide.
-    Le schema_overrides force SPMN_INTERNALID en texte (sinon casse l'ID).
-    """
+    """Commodite test / notebook : lit un CSV GLIMS puis classe et consolide."""
     df = pl.read_csv(
-        chemin, separator=",", schema_overrides={"SPMN_INTERNALID": pl.Utf8}
+        chemin,
+        separator=",",
+        schema_overrides=COLONNES_TEXTE_GLIMS,
+        infer_schema_length=None,
     )
     return biologie_glims(df, detail=detail)

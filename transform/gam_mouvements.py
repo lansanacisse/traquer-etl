@@ -1,7 +1,12 @@
+# Copyright (c) 2026
+# Tous droits réservés.
+
 import logging
 from datetime import datetime
 
 import polars as pl
+
+from utils.dates import parser_colonnes_datetime
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -18,20 +23,15 @@ COLONNES_DATES_GAM = [
 
 def parser_dates_gam(df: pl.DataFrame) -> pl.DataFrame:
     """Type les colonnes temporelles GAM presentes en Datetime."""
-    presentes = [c for c in COLONNES_DATES_GAM if c in df.columns]
-    if not presentes:
-        return df
-    return df.with_columns(
-        [pl.col(c).cast(pl.String).str.to_datetime() for c in presentes]
-    )
+    return parser_colonnes_datetime(df, COLONNES_DATES_GAM)
 
 
 def statut_sejour(df: pl.DataFrame) -> pl.DataFrame:
     """
-    Definit le statut du sejour :
-    - 'Programme' si la date d'entree est dans le futur.
-    - 'En cours'  si la date de sortie n'est pas definie.
-    - 'Termine'   si la date de sortie est definie.
+    Definit le statut FHIR du sejour (Encounter.status) :
+    - 'planned'     si la date d'entree est dans le futur.
+    - 'in-progress' si la date de sortie n'est pas definie.
+    - 'completed'   si la date de sortie est definie.
     """
     date_du_jour = datetime.now()
     return df.with_columns(
@@ -56,7 +56,24 @@ def mouvements_gam(df: pl.DataFrame) -> pl.DataFrame:
     return df_statut
 
 
+COLONNES_TEXTE_GAM = {
+    "UF_ENTREE": pl.Utf8,
+    "UF_SORTIE": pl.Utf8,
+    "UFO_ID": pl.Utf8,
+    "LIE_ETB_NUM": pl.Utf8,
+    "LIE_BAT_NUM": pl.Utf8,
+    "ETG_NUM": pl.Utf8,
+    "LIE_NUM": pl.Utf8,
+    "LIT_NUM": pl.Utf8,
+}
+
+
 def mouvements_gam_csv(chemin_fichier: str) -> pl.DataFrame:
     """Commodite test / notebook : lit un CSV GAM puis transforme."""
-    df_raw = pl.read_csv(chemin_fichier, separator=",")
+    df_raw = pl.read_csv(
+        chemin_fichier,
+        separator=",",
+        schema_overrides=COLONNES_TEXTE_GAM,
+        infer_schema_length=None,
+    )
     return mouvements_gam(df_raw)

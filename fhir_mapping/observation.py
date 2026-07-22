@@ -1,110 +1,70 @@
-from fhir.resources.annotation import Annotation
+# Copyright (c) 2026
+# Tous droits réservés CHU Brest.
+
+
+"""Observation : le resultat BHRe d'un dossier.
+
+Une Observation par dossier (grain retenu). Elle porte le resultat de
+surveillance en texte libre (valueCodeableConcept.text) et le
+micro-organisme identifie en composant, sans code ni systeme imposes : le
+logiciel receveur appliquera sa propre terminologie si necessaire.
+
+Aucune Observation n'est produite tant que le resultat n'est pas disponible.
+"""
+
 from fhir.resources.codeableconcept import CodeableConcept
 from fhir.resources.identifier import Identifier
 from fhir.resources.observation import Observation, ObservationComponent
-from fhir.resources.reference import Reference
 
-from fhir_mapping.utils import clean_id, get_demande_id, safe_datetime
+from fhir_mapping.utils import (
+    fhir_datetime,
+    id_encounter,
+    id_observation,
+    id_patient,
+    id_service_request,
+    id_specimen,
+    ref,
+    safe_str,
+)
+
+STATUTS_POSITIFS = {"EPC", "ERV", "EPC+ERV"}
 
 
-def map_observation(rows: list[dict]) -> Observation:
-    row = rows[0]
+def _valeur_resultat(resultat_bhre: str | None) -> str | None:
+    """Texte libre : le resultat BHRe tel que produit par la classification."""
+    if resultat_bhre in STATUTS_POSITIFS or resultat_bhre == "NEGATIF":
+        return resultat_bhre
+    return None
 
-    isolation_id = clean_id(row["id_isolation"])
-    ipp = clean_id(row["ipp"])
-    demande_id = get_demande_id(row)
 
-    components = []
+def map_observation(dossier: dict, id_prelevement=None) -> Observation | None:
+    """Renvoie None si le resultat n'est pas disponible."""
+    valeur = _valeur_resultat(dossier.get("resultat_bhre"))
+    if valeur is None:
+        return None
 
-    if row.get("nom_microorganisme"):
-        components.append(
+    id_dossier = dossier["id_dossier"]
+
+    composants = []
+    germe = safe_str(dossier.get("germe"))
+    if germe:
+        composants.append(
             ObservationComponent(
                 code=CodeableConcept(text="Micro-organisme identifié"),
-                valueCodeableConcept=CodeableConcept(
-                    text=row.get("nom_microorganisme")
-                ),
+                valueCodeableConcept=CodeableConcept(text=germe),
             )
         )
-
-    seen_antibiotiques = set()
-
-    for r in rows:
-        nom_antibiotique = r.get("nom_antibiotique")
-        sigle_antibiotique = r.get("sigle_antibiotique")
-        sensibilite = r.get("sensibilite_antibiotique")
-        cmi = r.get("cmi_antibiotique")
-
-        key = (
-            nom_antibiotique,
-            sigle_antibiotique,
-            sensibilite,
-            cmi,
-        )
-
-        if not nom_antibiotique or key in seen_antibiotiques:
-            continue
-
-        seen_antibiotiques.add(key)
-
-        components.append(
-            ObservationComponent(
-                code=CodeableConcept(
-                    text=nom_antibiotique,
-                ),
-                valueCodeableConcept=(
-                    CodeableConcept(text=sensibilite) if sensibilite else None
-                ),
-            )
-        )
-
-    notes = []
-
-    for r in rows:
-        if r.get("cmi_antibiotique") is not None and r.get("nom_antibiotique"):
-            notes.append(
-                Annotation(
-                    text=f"{r.get('nom_antibiotique')} - CMI: {r.get('cmi_antibiotique')}"
-                )
-            )
 
     return Observation(
-        id=f"observation-{isolation_id}",
-        identifier=[
-            Identifier(
-                system="urn:isolation-glims",
-                value=str(row["id_isolation"]),
-            )
-        ],
-        basedOn=[
-            Reference(
-                reference=f"ServiceRequest/servicerequest-{demande_id}",
-            )
-        ],
-        status=row.get("statut_observation") or "final",
-        code=CodeableConcept(
-            text=row.get("description_demande") or "Résultat microbiologique"
-        ),
-        subject=Reference(reference=f"Patient/patient-{ipp}"),
-        encounter=(
-            Reference(reference=f"Encounter/encounter-{clean_id(row['iep'])}")
-            if row.get("iep")
-            else None
-        ),
-        specimen=(
-            Reference(
-                reference=f"Specimen/specimen-{clean_id(row['id_prelevement_interne'])}"
-            )
-            if row.get("id_prelevement_interne")
-            else None
-        ),
-        effectiveDateTime=safe_datetime(
-            row.get("date_validation_isolation") or row.get("date_validation")
-        ),
-        interpretation=(
-            [CodeableConcept(text=row.get("sensibilite_antibiotique"))]
-            if row.get("sensibilite_antibiotique")
-            else None
-        ),
-        note=notes or None,
-        component=components or None,
+        id=id_observation(id_dossier),
+        identifier=[Identifier(system="urn:analysis-ref", value=str(id_dossier))],
+        basedOn=[ref(id_service_request(id_dossier))],
+        status="final",
+        code=CodeableConcept(text=dossier.get("libelle_examen") or None),
+        subject=ref(id_patient(dossier["ipp"])),
+        encounter=ref(id_encounter(dossier["iep"])) if dossier.get("iep") else None,
+        effectiveDateTime=fhir_datetime(dossier.get("date_validation")),
+        valueCodeableConcept=CodeableConcept(text=valeur),
+        specimen=ref(id_specimen(id_prelevement)) if id_prelevement else None,
+        component=composants or None,
     )

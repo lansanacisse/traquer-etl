@@ -1,55 +1,45 @@
+# Copyright (c) 2026
+# Tous droits réservés CHU Brest.
+
+"""ServiceRequest : un dossier d'analyse (ORD_INTERNALID)"""
+
 from fhir.resources.codeableconcept import CodeableConcept
 from fhir.resources.codeablereference import CodeableReference
 from fhir.resources.identifier import Identifier
-from fhir.resources.reference import Reference
 from fhir.resources.servicerequest import ServiceRequest
 
-from fhir_mapping.utils import clean_id, get_demande_id, safe_datetime
+from fhir_mapping.utils import (
+    fhir_datetime,
+    id_encounter,
+    id_location,
+    id_patient,
+    id_service_request,
+    id_specimen,
+    ref,
+)
+
+STATUT_SERVICE_REQUEST = {
+    "requested": "active",
+    "in-progress": "active",
+    "done": "completed",
+}
 
 
-def map_service_request(row: dict) -> ServiceRequest:
-    demande_id = get_demande_id(row)
-    ipp = clean_id(row["ipp"])
-
-    identifiers = [
-        Identifier(
-            system="urn:source-interne-glims",
-            value=str(row.get("id_source_interne")),
-        )
-    ]
-
-    if row.get("id_source_externe"):
-        identifiers.append(
-            Identifier(
-                system="urn:source-externe-glims",
-                value=str(row.get("id_source_externe")),
-            )
-        )
+def map_service_request(dossier: dict, id_prelevements: list) -> ServiceRequest:
+    id_dossier = dossier["id_dossier"]
+    service = dossier.get("service_demandeur")
 
     return ServiceRequest(
-        id=f"servicerequest-{demande_id}",
-        identifier=identifiers,
-        status=row.get("statut_service_request") or "active",
+        id=id_service_request(id_dossier),
+        identifier=[Identifier(system="urn:analysis-ref", value=str(id_dossier))],
+        status=STATUT_SERVICE_REQUEST.get(dossier.get("statut_suivi"), "active"),
         intent="order",
         code=CodeableReference(
-            concept=CodeableConcept(
-                text=row.get("description_demande"),
-            )
+            concept=CodeableConcept(text=dossier.get("libelle_examen") or None)
         ),
-        subject=Reference(reference=f"Patient/patient-{ipp}"),
-        encounter=(
-            Reference(reference=f"Encounter/encounter-{clean_id(row['iep'])}")
-            if row.get("iep")
-            else None
-        ),
-        authoredOn=safe_datetime(row.get("date_prescription")),
-        specimen=(
-            [
-                Reference(
-                    reference=f"Specimen/specimen-{clean_id(row['id_prelevement_interne'])}"
-                )
-            ]
-            if row.get("id_prelevement_interne")
-            else None
-        ),
+        subject=ref(id_patient(dossier["ipp"])),
+        encounter=ref(id_encounter(dossier["iep"])) if dossier.get("iep") else None,
+        authoredOn=fhir_datetime(dossier.get("date_prescription")),
+        requester=ref(id_location(service), display=service) if service else None,
+        specimen=[ref(id_specimen(p)) for p in id_prelevements] or None,
     )

@@ -1,3 +1,6 @@
+# Copyright (c) 2026
+# Tous droits réservés CHU Brest.
+
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
