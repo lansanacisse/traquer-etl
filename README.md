@@ -1,7 +1,7 @@
 # TRAQUER ETL
 
 Connecteur entre les systèmes d'information du CHU de Brest et l'application
-TRAQUER, pour la surveillance des bactéries hautement résistantes émergentes.
+TRAQUER, pour la surveillance des bactéries hautement résistantes aux antibiotiques.
 
 Les deux surveillées
 ici sont :
