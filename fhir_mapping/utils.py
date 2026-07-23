@@ -1,15 +1,6 @@
 # Copyright (c) 2026
 # Tous droits réservés CHU Brest.
 
-"""Fonctions transverses du mapping FHIR.
-
-Convention d'identifiants et de references : celle des bundles de reference
-de l'equipe d'integration. Le `fullUrl` de chaque entree vaut
-`urn:uuid:<id-logique>` et TOUTES les references internes pointent vers ce
-meme `urn:uuid:<id-logique>`. Le bundle est ainsi auto-portant : chaque
-reference se resout a l'interieur du bundle.
-"""
-
 import re
 import unicodedata
 from datetime import date, datetime

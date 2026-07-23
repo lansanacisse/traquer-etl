@@ -47,7 +47,7 @@ def build_bundle(pivot: dict[str, pl.DataFrame]) -> Bundle:
     mouvements_par_sejour = _grouper(pivot.get("mouvements"), "iep")
     prelevements_par_dossier = _grouper(pivot.get("prelevements"), "id_dossier")
 
-    # 1) Location : unites de sejour, puis services demandeurs.
+    # Location : unites de sejour, puis services demandeurs.
     for unite in _lignes(pivot.get("unites")):
         add_to_bundle(bundle, map_unite(unite), "Location")
 
@@ -59,16 +59,16 @@ def build_bundle(pivot: dict[str, pl.DataFrame]) -> Bundle:
     for service in sorted(services):
         add_to_bundle(bundle, map_service_demandeur(service), "Location")
 
-    # 2) Patient
+    # Patient
     for patient in _lignes(pivot.get("patients")):
         add_to_bundle(bundle, map_patient(patient), "Patient")
 
-    # 3) Encounter (le sejour et ses mouvements)
+    # Encounter (le sejour et ses mouvements)
     for sejour in _lignes(pivot.get("sejours")):
         mouvements = mouvements_par_sejour.get(sejour["iep"], [])
         add_to_bundle(bundle, map_encounter(sejour, mouvements), "Encounter")
 
-    # 4) Le monde GLIMS : dossier -> demande, prelevements, resultat, suivi.
+    # Le monde GLIMS : dossier -> demande, prelevements, resultat, suivi.
     for dossier in _lignes(pivot.get("dossiers")):
         prelevements = prelevements_par_dossier.get(dossier["id_dossier"], [])
         ids_prelevements = [p["id_prelevement"] for p in prelevements]

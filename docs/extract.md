@@ -42,12 +42,3 @@ def extract_nouvelle_source() -> pl.DataFrame:
 ```
 
 **Modifier une requête** : dans `queries/`, jamais ici.
-
-## Points d'attention
-
-- Les types viennent d'Oracle. Une date lue en base arrive typée, un CSV la
-  fournit en texte. Le pipeline gère les deux, mais les comportements diffèrent.
-- Tout est chargé en mémoire. Adapté aux volumes actuels (quelques milliers de
-  lignes).
-- Une erreur arrête le pipeline. Délibéré : mieux vaut pas de fichier qu'un
-  fichier partiel.

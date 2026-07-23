@@ -84,8 +84,6 @@ cd traquer-etl
 # 2. Créer l'environnement et installer les dépendances
 uv sync          # ou : python -m venv .venv && pip install -e .
 
-# 3. Renseigner les identifiants
-cp .env.example .env
 ```
 
 Le fichier `.env` doit contenir :
@@ -137,17 +135,6 @@ Ces volumes ne sont pas décoratifs : ils permettent de repérer immédiatement 
 quelle étape des données se perdent, sans relancer le traitement morceau par
 morceau.
 
-
-### Points d'attention connus
-
-| Sujet | État |
-|---|---|
-| Filtre patients dans les requêtes SQL | Encore limité à quelques IPP de test. À retirer avant usage réel. |
-| Volume des Encounter | Le bundle contient tous les séjours historiques, même sans analyse. Arbitrage à confirmer avec l'équipe d'intégration. |
-| Envoi au serveur FHIR | Implémenté mais non branché dans `main.py`. Seule la sauvegarde locale est active. |
-| Antibiogramme détaillé | Volontairement non transmis. Seuls le statut BHRe et le germe partent dans le bundle. |
-
----
 
 ## 8. Contacts
 
