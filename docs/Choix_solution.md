@@ -1,0 +1,11 @@
+# Approches envisageables pour l'alimentation de TRAQUER
+
+| Solution | Principe | Avantages | Limites / difficultés |
+|---|---|---|---|
+| **1. Standardisation des données en amont** | Définir un format commun que tous les CHU doivent respecter pour alimenter TRAQUER. Chaque établissement transforme ses propres données vers ce format. | - Déploiement plus simple à grande échelle<br>- Pas besoin de connecteurs spécifiques<br>- Données homogènes et fiables | - Effort initial important pour chaque CHU<br>- Nécessite documentation et accompagnement |
+| **2. Connecteur spécifique par CHU** | Créer un programme différent pour chaque établissement afin de récupérer les données selon son organisation locale (GLIMS, etc.). | - S'adapte précisément aux systèmes existants<br>- Fonctionne sans standardisation globale | - Coût de maintenance très élevé<br>- Chaque CHU devient un nouveau projet IT |
+| **3. Flux InterHop** | Récupérer les données via un flux d'échange déjà existant entre établissements plutôt que directement dans les bases locales. | - Format plus standardisé<br>- Facilite les échanges inter-CHU | - Flux parfois incomplet<br>- Dépendance à la qualité du contenu transmis |
+| **4. Format HPRIM** | Exploiter le format standard d'échange de biologie utilisé notamment entre laboratoires. | - Format connu et utilisé<br>- Automatisation des résultats | - Format « peu verbeux »<br>- Infos BHRe souvent en texte libre |
+| **5. Analyse par IA (NLP)** | Utiliser une IA pour lire les comptes rendus de laboratoire et extraire automatiquement les informations BHRe. | - Indépendant de la structure IT locale<br>- Supporte la variabilité d'écriture | - Développement important requis<br>- Risque d'erreurs d'interprétation |
+| **6. EDS (Entrepôts de Données)** | Récupérer les informations depuis les bases de données hospitalières dédiées à la recherche. | - Centralise plusieurs sources<br>- Évite les connexions multiples aux logiciels | - Maturité variable selon les CHU<br>- Temps réel pas toujours garanti |
+| **7. Approche hybride** | Combinaison : données structurées quand elles existent + IA pour compléter les manques. | - Plus robuste<br>- Exploite le meilleur de chaque approche | - Architecture plus complexe<br>- Plusieurs flux à gérer |
