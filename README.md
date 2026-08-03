@@ -20,7 +20,7 @@ le **traducteur** entre les deux.
 
 ### Ce que fait concrètement le connecteur
 
-![alt text](image.png)
+![alt text](docs/img/image3.png)
 
 En trois phrases : le connecteur va chercher les résultats d'analyses au
 laboratoire et les mouvements des patients dans l'hôpital, il détermine qui est
@@ -45,7 +45,7 @@ standardisé que TRAQUER comprend.
 
 Le pipeline se déroule en six étapes, chacune confiée à un dossier du projet.
 
-![alt text](image-1.png)
+![alt text](docs/img/image4.png)
 
 
 ## 3. Les dossiers du projet
