@@ -1,5 +1,6 @@
 # Copyright (c) 2026
-# Tous droits réservés.
+# Tous droits réservés CHU Brest.
+
 
 import logging
 from datetime import datetime
