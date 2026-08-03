@@ -1,10 +1,6 @@
 # `transform/`
 
-
-Cœur métier. Répond à la question : **ce patient est-il porteur d'une bactérie
-hautement résistante ?** Transforme des résultats de laboratoire en texte libre
-en une information exploitable : EPC, ERV, les deux, négatif, ou pas encore
-disponible.
+Cœur métier : détermine si un patient est porteur (EPC/ERV/négatif/en attente).
 
 ## Organisation
 
@@ -13,82 +9,72 @@ transform/
 ├── glims_biologie.py     # étape 2a : qui est porteur ?
 ├── gam_mouvements.py     # étape 2b : où est le patient ?
 ├── fusion_gam_glims.py   # étape 3 : rapprochement
-└── normalisation.py      # étape 4 : mise en forme
+├── normalisation.py      # étape 4a : traduction GLIMS/GAM → noms standards
+└── pivot.py              # étape 4b : construction des six tables (générique)
 ```
 
-Ces quatre fichiers s'enchaînent dans cet ordre.
+Les quatre premiers sont propres au CHU de Brest. `pivot.py` ne connaît ni
+GLIMS ni le GAM : seul fichier réutilisable tel quel par un autre
+établissement, s'il fournit un DataFrame aux noms standards (voir
+`Fiche_format_connecteur.md`).
 
 ---
 
-## `glims_biologie.py` : classification BHRe
+## `glims_biologie.py`
 
-### Le problème
+Lit les résultats en texte libre (« Présence de... », « Absence de... ») pour
+classer chaque dossier.
 
-Les résultats ne disent pas « ce patient est porteur ». Ils disent, en texte
-libre : « Présence d'une Carbapénémase de type NDM », « Absence de
-Carbapénémase type OXA48 », ou « Recherche d'ERV » avec ailleurs « Positif ».
-Il faut lire plusieurs colonnes ensemble pour conclure.
+`STATUT_SURVEILLANCE` : `EPC` / `ERV` / `EPC+ERV` / `NEGATIF` /
+`RESULTAT_NON_DISPONIBLE`.
 
-### Statuts produits
+`STATUT_RESULTAT` : `requested` / `in-progress` / `done`.
 
-`STATUT_SURVEILLANCE` :
+`consolider()` réduit à une ligne par dossier, priorité :
+`EPC+ERV > EPC > ERV > NEGATIF > RESULTAT_NON_DISPONIBLE`.
 
-| Valeur | Signification |
+---
+
+## `gam_mouvements.py`
+
+Calcule le statut du séjour, déjà en codes FHIR : `planned` / `in-progress` /
+`completed`.
+
+---
+
+## `fusion_gam_glims.py`
+
+Relie analyses et séjours par l'**IEP**.
+
+---
+
+## `normalisation.py` (spécifique à Brest)
+
+Renomme les colonnes GLIMS/GAM vers les noms standards. Aucun parsing, aucune
+agrégation.
+
+| Fonction | Rôle |
 |---|---|
-| `EPC` / `ERV` / `EPC+ERV` | Porteur |
-| `NEGATIF` | Recherche faite, rien trouvé |
-| `RESULTAT_NON_DISPONIBLE` | Analyse pas encore aboutie |
+| `standardiser(df)` | Renommage vers les noms standards |
+| `normaliser(df)` | `standardiser()` + `pivot.construire_pivot()` |
 
+À réécrire, avec les requêtes SQL et les règles de détection, pour un autre
+système source.
 
-`STATUT_RESULTAT` : `requested` (prélèvement pas fait), `in-progress` (culture
-en cours), `done` (résultat disponible).
+---
 
-### Consolidation
+## `pivot.py` (générique)
 
-Une analyse produit plusieurs lignes (une par antibiotique testé, par exemple).
-`consolider()` n'en garde qu'une par dossier, par priorité :
+Découpe un DataFrame **déjà standardisé** en six tables (une ligne par
+entité) : `patients`, `sejours`, `mouvements`, `unites`, `dossiers`,
+`prelevements`. Applique fuseau Europe/Paris, neutralisation de la sentinelle
+`4712-12-31`, première valeur non nulle par entité.
 
-```
-EPC+ERV  >  EPC  >  ERV  >  NEGATIF  >  RESULTAT_NON_DISPONIBLE
-```
+Point d'entrée : `construire_pivot(df)`, appelable directement par un
+établissement tiers sur son propre DataFrame standardisé.
 
-
-## `gam_mouvements.py` : parcours du patient
-
-Type les dates et calcule le statut du séjour :
-
-| Situation | Statut |
-|---|---|
-| Entrée dans le futur | `planned` |
-| Pas de date de sortie | `in-progress` |
-| Sortie renseignée | `completed` |
-
-Ces valeurs sont déjà celles de FHIR : elles ne seront pas retraduites.
-
-
-## `fusion_gam_glims.py` : rapprochement
-
-Relie les analyses aux séjours par l'**IEP**.
-
-
-## `normalisation.py` : mise en forme
-
-Découpe la table fusionnée en **six tables propres**, une ligne par entité
-réelle. C'est le **modèle pivot**.
-
-| Table | Une ligne par | Contenu |
-|---|---|---|
-| `patients` | IPP | Nom, prénom, naissance, sexe, décès |
-| `sejours` | IEP | Dates, statut |
-| `mouvements` | mouvement | Unité, chambre, lit, période |
-| `unites` | unité | Code et libellé |
-| `dossiers` | analyse | Résultat BHRe, germe, service demandeur |
-| `prelevements` | prélèvement | Dates de prélèvement et réception |
-
-C'est le seul fichier à réécrire si un autre hôpital réutilise le connecteur
-avec d'autres logiciels sources.
-
+---
 
 ## Interactions
 
-![alt text](image.png)
+![alt text](img/image.png)

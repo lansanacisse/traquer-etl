@@ -52,7 +52,6 @@ font que traduire : `transform/` a déjà fait le travail de préparation.
 Les liens utilisent la forme `urn:uuid:patient-167825`, ce qui rend le Bundle
 auto-suffisant : chaque référence trouve sa cible dans le fichier.
 
-
 ## Terminologie
 
 Les champs décrivant la nature d'un examen ou d'un résultat sont transmis en
@@ -62,4 +61,4 @@ FHIR les exige : type de rencontre et type de lieu.
 
 ## Interactions
 
-![alt text](image-1.png)
+![alt text](img/image1.png)
